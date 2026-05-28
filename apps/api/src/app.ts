@@ -45,11 +45,18 @@ export async function buildApp(): Promise<FastifyInstance> {
     timeWindow: app.config.RATE_LIMIT_WINDOW,
     allowList: ["127.0.0.1"],
   });
-  await app.register(underPressure, {
-    maxEventLoopDelay: 1000,
-    maxHeapUsedBytes: 512 * 1024 * 1024,
-    exposeStatusRoute: false,
-  });
+  // Load shedder for production. Disabled in tests because the in-process
+  // app.inject concurrency tests deliberately queue 100+ async tasks, which
+  // is exactly what this plugin guards against — but those tests aren't
+  // exercising HTTP throughput, they're verifying the reservation
+  // transaction semantics, so the plugin gets in the way.
+  if (app.config.NODE_ENV !== "test") {
+    await app.register(underPressure, {
+      maxEventLoopDelay: 1000,
+      maxHeapUsedBytes: 512 * 1024 * 1024,
+      exposeStatusRoute: false,
+    });
+  }
 
   await app.register(prismaPlugin);
   await app.register(metricsPlugin);

@@ -1,4 +1,5 @@
 import { buildApp } from "./app.js";
+import { startExpiryCron } from "./services/expiry.js";
 
 async function main() {
   const app = await buildApp();
@@ -11,9 +12,12 @@ async function main() {
     process.exit(1);
   }
 
+  const stopCron = startExpiryCron(app);
+
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, "Shutting down");
     try {
+      stopCron();
       await app.close();
       process.exit(0);
     } catch (err) {
