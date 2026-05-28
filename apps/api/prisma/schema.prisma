@@ -1,0 +1,131 @@
+// Prisma schema for LSPS — Limited Stock Product System.
+//
+// Stock accounting:
+//   stockTotal     = manufactured inventory (immutable except for ADJUSTMENT events)
+//   stockAvailable = stockTotal - (sum of active reservations) - (sum of completed orders)
+// Updates to stockAvailable happen ONLY inside a Postgres row-locked transaction
+// (SELECT ... FOR UPDATE on Product) so concurrent reservers serialize per-SKU.
+//
+// Audit trail: every stock-affecting event is written to InventoryLog with a
+// signed `delta`, making the ledger reconstructible from the log alone.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum InventoryEventType {
+  RESERVE
+  RELEASE_EXPIRY
+  RELEASE_CANCEL
+  CHECKOUT
+  ADJUSTMENT
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservations  Reservation[]
+  orders        Order[]
+  inventoryLogs InventoryLog[]
+
+  @@index([createdAt])
+}
+
+model Product {
+  id             String   @id @default(uuid()) @db.Uuid
+  sku            String   @unique
+  name           String
+  description    String?
+  priceCents     Int      @default(0)
+  currency       String   @default("EUR") @db.Char(3)
+  stockTotal     Int      @default(0)
+  stockAvailable Int      @default(0)
+  dropAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reservations  Reservation[]
+  orders        Order[]
+  inventoryLogs InventoryLog[]
+
+  @@index([sku])
+  @@index([dropAt])
+  // Guards in addition to app-level transaction:
+  //   stockAvailable must never go negative (CHECK added in migration).
+}
+
+model Reservation {
+  id         String            @id @default(uuid()) @db.Uuid
+  userId     String            @db.Uuid
+  productId  String            @db.Uuid
+  quantity   Int
+  status     ReservationStatus @default(ACTIVE)
+  expiresAt  DateTime
+  completedAt DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order   Order?
+
+  // Sweeper queries: WHERE status = 'ACTIVE' AND expiresAt < now()
+  @@index([status, expiresAt])
+  // Duplicate-reservation guard: app enforces "one ACTIVE per (user, product)" inside the txn.
+  @@index([userId, productId, status])
+  @@index([userId, createdAt])
+}
+
+model Order {
+  id            String   @id @default(uuid()) @db.Uuid
+  reservationId String   @unique @db.Uuid
+  userId        String   @db.Uuid
+  productId     String   @db.Uuid
+  quantity      Int
+  totalCents    Int
+  currency      String   @db.Char(3)
+  createdAt     DateTime @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([productId, createdAt])
+}
+
+model InventoryLog {
+  id            String             @id @default(uuid()) @db.Uuid
+  productId     String             @db.Uuid
+  userId        String?            @db.Uuid
+  reservationId String?            @db.Uuid
+  orderId       String?            @db.Uuid
+  eventType     InventoryEventType
+  delta         Int                // signed: -N on RESERVE/CHECKOUT, +N on RELEASE_*
+  stockAfter    Int                // snapshot of stockAvailable AFTER the event
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([eventType, createdAt])
+}

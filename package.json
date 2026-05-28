@@ -1,0 +1,33 @@
+{
+  "name": "lsps-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Limited Stock Product System — race-safe reservation/checkout drop platform.",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:api": "pnpm --filter @lsps/api dev",
+    "dev:web": "pnpm --filter @lsps/web dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @lsps/api exec prisma migrate dev",
+    "db:seed": "pnpm --filter @lsps/api exec tsx prisma/seed.ts",
+    "db:studio": "pnpm --filter @lsps/api exec prisma studio"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "bcrypt"
+    ]
+  }
+}

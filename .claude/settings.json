@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/amirghari/Desktop/LSPS-MCP status --short)",
+      "Bash(git -C /Users/amirghari/Desktop/LSPS-MCP log --oneline -20)",
+      "WebFetch(domain:mpcircleltd-my.sharepoint.com)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm rebuild *)",
+      "Bash(pnpm --filter @lsps/api exec prisma --version)",
+      "Bash(pnpm --filter @lsps/api exec prisma generate)",
+      "Bash(pnpm -r typecheck)",
+      "Bash(git add *)",
+      "Bash(git -C /Users/amirghari/Desktop/LSPS-MCP rev-parse --show-toplevel)"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+node_modules
+dist
+build
+coverage
+.next
+.turbo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# editor / OS
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code local settings (per-developer allowlist)
+.claude/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
