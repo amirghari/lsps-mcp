@@ -14,9 +14,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "prisma:studio": "dotenv -e ../../.env -- prisma studio",
+    "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "prisma:reset": "dotenv -e ../../.env -- prisma migrate reset --force"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -44,6 +46,7 @@
     "@types/node": "^22.9.1",
     "@types/node-cron": "^3.0.11",
     "@types/supertest": "^6.0.2",
+    "dotenv-cli": "^7.4.2",
     "pino-pretty": "^11.3.0",
     "prisma": "^6.0.1",
     "supertest": "^7.0.0",

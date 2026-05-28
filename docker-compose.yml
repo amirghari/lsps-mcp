@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: lsps_dev
       POSTGRES_DB: lsps
     ports:
-      - "5432:5432"
+      # 5433 on host to avoid clashing with a system/brew postgres on 5432.
+      - "5433:5432"
     volumes:
       - lsps_pgdata:/var/lib/postgresql/data
     healthcheck:

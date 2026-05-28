@@ -14,9 +14,9 @@
     "typecheck": "pnpm -r run typecheck",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
-    "db:migrate": "pnpm --filter @lsps/api exec prisma migrate dev",
-    "db:seed": "pnpm --filter @lsps/api exec tsx prisma/seed.ts",
-    "db:studio": "pnpm --filter @lsps/api exec prisma studio"
+    "db:migrate": "pnpm --filter @lsps/api exec dotenv -e ../../.env -- prisma migrate dev",
+    "db:seed": "pnpm --filter @lsps/api run prisma:seed",
+    "db:studio": "pnpm --filter @lsps/api run prisma:studio"
   },
   "engines": {
     "node": ">=20.0.0"

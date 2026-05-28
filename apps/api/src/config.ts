@@ -1,5 +1,15 @@
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
+
+// Load env in priority order:
+//   1. process.env wins (production: Pxxl/Render injects env directly)
+//   2. workspace root .env (local dev: one .env shared by api + web)
+//   3. apps/api/.env (escape hatch for API-specific overrides)
+const here = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(here, "../.env") });
+loadEnv({ path: resolve(here, "../../../.env") });
 
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
