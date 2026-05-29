@@ -4,6 +4,7 @@ build
 coverage
 .next
 .turbo
+*.tsbuildinfo
 
 # env
 .env
@@ -19,6 +20,10 @@ coverage
 
 # Claude Code local settings (per-developer allowlist)
 .claude/
+
+# Personal notes / interview prep — not for reviewers
+NOTES.md
+SCRATCH.md
 
 # logs
 *.log

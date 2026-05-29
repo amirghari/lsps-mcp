@@ -12,6 +12,11 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Server replied with a non-2xx and a structured error envelope.
+ * The body's `error.code` is the source of truth for what failed
+ * (e.g. OUT_OF_STOCK, DUPLICATE_RESERVATION, RESERVATION_EXPIRED).
+ */
 export class ApiRequestError extends Error {
   public readonly status: number;
   public readonly code: string;
@@ -22,6 +27,23 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.code = payload.error.code;
     this.details = payload.error.details;
+  }
+}
+
+/** Request was aborted by our own timeout (NOT a user-initiated cancel). */
+export class ApiTimeoutError extends Error {
+  constructor(public readonly timeoutMs: number) {
+    super(`Request timed out after ${timeoutMs}ms`);
+    this.name = "ApiTimeoutError";
+  }
+}
+
+/** fetch() itself rejected — server unreachable, DNS failure, offline, etc. */
+export class ApiNetworkError extends Error {
+  constructor(cause: unknown) {
+    super("Network error");
+    this.name = "ApiNetworkError";
+    this.cause = cause;
   }
 }
 
@@ -54,24 +76,54 @@ export async function api<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  // Outer signal abort (e.g. component unmount) cancels too.
+  let externalAbort = false;
   if (signal) {
-    signal.addEventListener("abort", () => controller.abort(), { once: true });
+    const onAbort = () => {
+      externalAbort = true;
+      controller.abort();
+    };
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
   }
 
   try {
-    const res = await fetch(`${API_URL}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (timedOut) throw new ApiTimeoutError(timeoutMs);
+      if (externalAbort) throw err; // let caller decide; AbortError bubbles
+      throw new ApiNetworkError(err);
+    }
 
     if (res.status === 204) return undefined as T;
 
-    const payload = (await res.json()) as unknown;
+    // Some 5xx responses may not be JSON. Tolerate both.
+    const text = await res.text();
+    const payload = text ? (JSON.parse(text) as unknown) : null;
+
     if (!res.ok) {
-      throw new ApiRequestError(res.status, payload as ApiError);
+      if (payload && typeof payload === "object" && "error" in payload) {
+        throw new ApiRequestError(res.status, payload as ApiError);
+      }
+      throw new ApiRequestError(res.status, {
+        error: {
+          code: "UNKNOWN",
+          message: `HTTP ${res.status}`,
+        },
+      });
     }
     return payload as T;
   } finally {
