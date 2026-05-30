@@ -1,0 +1,65 @@
+# Reference composition for a single-host production deploy.
+# Each service is independently deployable on platforms like Pxxl / Render /
+# Fly / Railway — this file is for: (a) full-stack local prod-mode testing,
+# (b) a "one Docker host" deploy if your platform supports compose.
+#
+# For platforms that take individual Dockerfiles (one service per app),
+# point them at apps/api/Dockerfile and apps/web/Dockerfile separately.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lsps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-lsps}
+    ports:
+      - "5433:5432"
+    volumes:
+      - lsps_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lsps}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lsps}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-lsps}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      LOG_LEVEL: info
+      RESERVATION_TTL_SECONDS: 300
+      EXPIRY_SWEEP_INTERVAL_SECONDS: 15
+      RATE_LIMIT_MAX: 120
+      RATE_LIMIT_WINDOW: 1 minute
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+
+volumes:
+  lsps_pgdata:

@@ -24,6 +24,7 @@ coverage
 # Personal notes / interview prep — not for reviewers
 NOTES.md
 SCRATCH.md
+docs/personal/
 
 # logs
 *.log

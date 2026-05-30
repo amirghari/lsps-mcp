@@ -50,11 +50,35 @@ export async function buildApp(): Promise<FastifyInstance> {
   // is exactly what this plugin guards against — but those tests aren't
   // exercising HTTP throughput, they're verifying the reservation
   // transaction semantics, so the plugin gets in the way.
+  //
+  // `maxEventLoopDelay: 2000` gives 2× the headroom of the default 1000ms —
+  // local dev briefly tripped the 1s threshold (likely IDE/GC noise) and
+  // returned a 503 to the browser. In production with no pino-pretty
+  // transport and no HMR rebuilds, the event loop is much quieter; 2s is a
+  // safer threshold for the "no downtime" SLO without giving up the shedder.
+  // Health probes go through a separate `pressureHandler` so platform
+  // health checks NEVER see 503 even under genuine overload.
   if (app.config.NODE_ENV !== "test") {
+    const HEALTH_PATHS = new Set(["/health", "/health/db", "/metrics"]);
     await app.register(underPressure, {
-      maxEventLoopDelay: 1000,
-      maxHeapUsedBytes: 512 * 1024 * 1024,
+      maxEventLoopDelay: 2000,
+      maxHeapUsedBytes: 768 * 1024 * 1024,
       exposeStatusRoute: false,
+      retryAfter: 5,
+      pressureHandler: (req, reply, _type, _value) => {
+        if (HEALTH_PATHS.has(req.url)) {
+          // Let health/metrics requests bypass the shedder so the platform's
+          // probe doesn't mark us unhealthy and recycle the instance.
+          return;
+        }
+        reply.status(503).send({
+          error: {
+            code: "SERVICE_UNAVAILABLE",
+            message: "Server temporarily overloaded, please retry shortly",
+          },
+          requestId: req.id,
+        });
+      },
     });
   }
 
