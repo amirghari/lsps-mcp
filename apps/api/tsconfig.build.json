@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["tests/**/*", "**/*.test.ts"]
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["tests/**/*", "**/*.test.ts", "prisma/**/*"]
 }
