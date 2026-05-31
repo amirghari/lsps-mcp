@@ -5,7 +5,7 @@
   "description": "Limited Stock Product System — race-safe reservation/checkout drop platform.",
   "packageManager": "pnpm@10.14.0",
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
+    "dev": "pnpm --filter @lsps/types run build && pnpm -r --parallel run dev",
     "dev:api": "pnpm --filter @lsps/api dev",
     "dev:web": "pnpm --filter @lsps/web dev",
     "build": "pnpm -r run build",
