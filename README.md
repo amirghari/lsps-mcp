@@ -6,7 +6,7 @@ A race-safe limited-drop platform: backend in **Fastify + TypeScript + Prisma + 
 > - GitHub: this repo
 > - Pxxl deploy: _link added on submission_
 > - Loom walkthrough (5–8 min): _link added on submission_
-> - Architecture diagram: `docs/architecture.png` (hand-drawn) — see also the ASCII version below
+> - Architecture diagram: [`docs/architecture.md`](docs/architecture.md) — see also the ASCII version below
 > - This README (race conditions, schema, trade-offs, 10k breakage, scaling)
 
 ---
@@ -123,7 +123,7 @@ Every error response uses one envelope: `{ "error": { "code", "message", "detail
                                      └────────────────────────────┘
 ```
 
-The hand-drawn version (`docs/architecture.png`) shows the same picture with labels for the lock primitive, the InventoryLog double-entry invariant, and the sweeper's `SKIP LOCKED` interaction.
+The fuller annotated version ([`docs/architecture.md`](docs/architecture.md)) shows the same picture with labels for the lock primitive, the InventoryLog double-entry invariant, and the sweeper's `SKIP LOCKED` interaction.
 
 ---
 
