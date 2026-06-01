@@ -95,11 +95,12 @@ export function DropCard({
     }
   };
 
-  // Derived state for the primary button.
+  // Derived state for the primary button. We deliberately do NOT hide the
+  // button after a successful checkout — the user may want to grab another
+  // unit, and forcing a page refresh to "see" the Reserve button again is a
+  // bad UX. The success state is communicated by the green banner below;
+  // the button stays visible and CTA-shaped.
   const button = useMemo(() => {
-    if (checkedOutOrderId) {
-      return null;
-    }
     if (reservation && !countdown.isExpired) {
       return (
         <Button
@@ -133,12 +134,7 @@ export function DropCard({
     }
     if (product.stockAvailable === 0) {
       return (
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled
-        >
+        <Button variant="primary" size="lg" className="w-full" disabled>
           Sold out
         </Button>
       );
@@ -151,7 +147,7 @@ export function DropCard({
         loading={reserveMutation.isPending}
         onClick={handleReserve}
       >
-        Reserve 1 unit
+        {checkedOutOrderId ? "Reserve another unit" : "Reserve 1 unit"}
       </Button>
     );
   }, [
